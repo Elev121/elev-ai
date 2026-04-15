@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# netlify.toml  — ELEV frontend deployment configuration
+#
+# HOW THE PROXY WORKS
+# ───────────────────
+# The build command runs scripts/build.sh which writes frontend/_redirects:
+#
+#   /api/*  →  https://your-railway-url.up.railway.app/api/:splat  200
+#
+# Every /api/* call the browser makes goes to Netlify (same origin).
+# Netlify silently forwards it to Railway.  The browser never sees a
+# cross-origin request, so CORS is irrelevant.
+#
+# REQUIRED: set BACKEND_URL in Netlify → Site settings → Environment variables
+#   Key:   BACKEND_URL
+#   Value: https://your-app.up.railway.app   (no trailing slash)
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  # Generates frontend/_redirects from the BACKEND_URL env variable,
+  # then Netlify publishes the frontend/ directory.
+  command = "bash scripts/build.sh"
+  publish = "frontend"
+
+[build.environment]
+  # Pin Node to a stable LTS version for the build script.
+  NODE_VERSION = "20"
+
+# ── Security headers (all pages) ─────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+
+# ── Cache: immutable assets ───────────────────────────────────────────────────
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ── SPA fallback: serve index.html for any unmatched path ────────────────────
+# Not strictly needed (ELEV uses plain HTML files), but prevents Netlify's
+# default 404 page if someone shares a direct link to upload.html etc.
+[[redirects]]
+  from   = "/upload"
+  to     = "/upload.html"
+  status = 200
+
+[[redirects]]
+  from   = "/upload/"
+  to     = "/upload.html"
+  status = 200

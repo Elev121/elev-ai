@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ELEV — Upload & Validate Research</title>
+  <meta name="description" content="Upload your research paper PDF for AI-powered validation using the ELEV framework." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Shared styles + Upload-specific styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/upload.css" />
+</head>
+<body>
+
+  <!-- ══ NAVBAR ══════════════════════════════════════════════════ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner container">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-icon">E</span>
+        <span class="logo-text">ELEV</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#methodology">Methodology</a></li>
+        <li><a href="index.html#metrics">Metrics</a></li>
+        <li><a href="index.html#pricing">Pricing</a></li>
+        <li><a href="upload.html" class="active">Upload</a></li>
+      </ul>
+      <a href="index.html" class="btn btn-ghost nav-cta">← Back to Home</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ══ PAGE HEADER ════════════════════════════════════════════ -->
+  <div class="upload-page-header">
+    <div class="container">
+      <div class="upload-header-badge">
+        <span class="badge-dot"></span>
+        PDF Validation Engine
+      </div>
+      <h1 class="upload-page-title">Validate Your Research Paper</h1>
+      <p class="upload-page-desc">
+        Upload a PDF to receive a comprehensive ELEV analysis across four modules:
+        structure, citations, argument strength, and integrity risk.
+      </p>
+      <div class="upload-module-chips">
+        <span class="module-chip chip-blue">Structural Feedback</span>
+        <span class="module-chip chip-purple">Citation Review</span>
+        <span class="module-chip chip-teal">Argument Strength</span>
+        <span class="module-chip chip-orange">Integrity Risk</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN CONTENT ════════════════════════════════════════════ -->
+  <main class="upload-main">
+    <div class="container upload-layout">
+
+      <!-- ── LEFT: Upload Zone ──────────────────────────────────── -->
+      <div class="upload-column">
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="PDF upload area">
+          <div class="drop-zone-inner" id="dropZoneInner">
+            <div class="drop-icon">
+              <svg viewBox="0 0 64 64" fill="none">
+                <rect x="8" y="6" width="36" height="48" rx="4" stroke="currentColor" stroke-width="2.5"/>
+                <path d="M36 6v12h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M32 38v-14M26 30l6-6 6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="46" cy="46" r="14" fill="#0a0f1e" stroke="currentColor" stroke-width="2.5"/>
+                <path d="M46 40v12M40 46h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="drop-primary">Drag &amp; drop your PDF here</p>
+            <p class="drop-secondary">or click to browse</p>
+            <p class="drop-hint">PDF only · max 20 MB · text-based (not scanned)</p>
+          </div>
+          <input type="file" id="fileInput" accept=".pdf,application/pdf" class="file-input-hidden" aria-label="Choose PDF file" />
+        </div>
+
+        <!-- File info card (shown after file selected) -->
+        <div class="file-info-card hidden" id="fileInfoCard">
+          <div class="file-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="file-details">
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+          </div>
+          <button class="file-remove" id="fileRemove" aria-label="Remove file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Upload progress -->
+        <div class="upload-progress hidden" id="uploadProgress">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-labels">
+            <span id="progressLabel">Uploading…</span>
+            <span id="progressPct">0%</span>
+          </div>
+        </div>
+
+        <!-- Validate button -->
+        <button class="btn btn-primary btn-lg btn-block" id="analyzeBtn" disabled>
+          <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+          </svg>
+          <span class="btn-text">Analyse Document</span>
+          <span class="btn-spinner hidden"></span>
+        </button>
+
+        <!-- Error message -->
+        <div class="upload-error hidden" id="uploadError">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+          <span id="errorText"></span>
+        </div>
+
+        <!-- How it works (sidebar info) -->
+        <div class="how-it-works">
+          <h3>How It Works</h3>
+          <ol class="steps-list">
+            <li>
+              <span class="step-num">1</span>
+              <div><strong>Upload</strong><p>Select a text-based PDF (thesis, journal paper, coursework).</p></div>
+            </li>
+            <li>
+              <span class="step-num">2</span>
+              <div><strong>Parse</strong><p>ELEV extracts and segments the document into structured sections.</p></div>
+            </li>
+            <li>
+              <span class="step-num">3</span>
+              <div><strong>Claude AI Analysis</strong><p>The document text is sent to Claude, which evaluates structure, citations, argument strength, and integrity.</p></div>
+            </li>
+            <li>
+              <span class="step-num">4</span>
+              <div><strong>Detailed Review</strong><p>Receive an ELEV Score, grade, and Claude-written academic feedback with specific, actionable guidance.</p></div>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: Results Panel ───────────────────────────────── -->
+      <div class="results-column" id="resultsColumn">
+
+        <!-- Empty state -->
+        <div class="results-empty" id="resultsEmpty">
+          <div class="empty-illustration">
+            <svg viewBox="0 0 120 120" fill="none">
+              <circle cx="60" cy="60" r="56" stroke="#1e2d4a" stroke-width="2" stroke-dasharray="8 4"/>
+              <rect x="38" y="28" width="44" height="56" rx="4" stroke="#243554" stroke-width="2"/>
+              <line x1="47" y1="44" x2="73" y2="44" stroke="#1e2d4a" stroke-width="2" stroke-linecap="round"/>
+              <line x1="47" y1="53" x2="73" y2="53" stroke="#1e2d4a" stroke-width="2" stroke-linecap="round"/>
+              <line x1="47" y1="62" x2="63" y2="62" stroke="#1e2d4a" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p>Upload a PDF to see your ELEV analysis results here.</p>
+        </div>
+
+        <!-- Processing state -->
+        <div class="results-processing hidden" id="resultsProcessing">
+          <div class="processing-animation">
+            <div class="pulse-ring"></div>
+            <div class="pulse-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+          </div>
+          <p class="processing-label" id="processingLabel">Parsing document…</p>
+          <div class="processing-steps">
+            <div class="proc-step" id="procStep1">
+              <span class="proc-dot"></span>Extracting text &amp; sections
+            </div>
+            <div class="proc-step" id="procStep2">
+              <span class="proc-dot"></span>Sending to Claude AI
+            </div>
+            <div class="proc-step" id="procStep3">
+              <span class="proc-dot"></span>Evaluating structure &amp; citations
+            </div>
+            <div class="proc-step" id="procStep4">
+              <span class="proc-dot"></span>Analysing arguments &amp; integrity
+            </div>
+            <div class="proc-step" id="procStep5">
+              <span class="proc-dot"></span>Generating detailed feedback
+            </div>
+          </div>
+        </div>
+
+        <!-- Results (shown after analysis) -->
+        <div class="results-content hidden" id="resultsContent">
+
+          <!-- Overall score header -->
+          <div class="overall-header">
+            <div class="overall-left">
+              <h2 class="results-title" id="resultsDocTitle">Analysis Results</h2>
+              <div class="doc-meta" id="docMeta"></div>
+            </div>
+            <div class="overall-score-wrap">
+              <div class="overall-score-circle">
+                <svg viewBox="0 0 120 120">
+                  <circle class="score-bg" cx="60" cy="60" r="52"/>
+                  <circle class="score-fill" id="overallScoreFill" cx="60" cy="60" r="52"
+                    stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+                </svg>
+                <div class="score-text">
+                  <span class="score-value" id="overallScoreValue">--</span>
+                  <span class="score-label">ELEV Score</span>
+                </div>
+              </div>
+              <div class="overall-grade" id="overallGrade">--</div>
+            </div>
+          </div>
+
+          <!-- Module score bar summary -->
+          <div class="module-summary" id="moduleSummary"></div>
+
+          <!-- Tabs -->
+          <div class="result-tabs">
+            <div class="tab-nav" role="tablist">
+              <button class="tab-btn active" data-tab="structural" role="tab" aria-selected="true">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M2 3h12v2H2zM2 7h12v2H2zM2 11h8v2H2z"/>
+                </svg>
+                Structure
+              </button>
+              <button class="tab-btn" data-tab="citation" role="tab" aria-selected="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1zm1 8V6l2 1.5L8 6l2 1.5L12 6v4H4z"/>
+                </svg>
+                Citations
+              </button>
+              <button class="tab-btn" data-tab="argument" role="tab" aria-selected="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8 1a.5.5 0 01.5.5v5h5a.5.5 0 010 1h-5v5a.5.5 0 01-1 0v-5h-5a.5.5 0 010-1h5v-5A.5.5 0 018 1z"/>
+                </svg>
+                Arguments
+              </button>
+              <button class="tab-btn" data-tab="integrity" role="tab" aria-selected="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 1l6 2v5.5c0 3-2.5 5.5-6 7-3.5-1.5-6-4-6-7V3l6-2z"/>
+                </svg>
+                Integrity
+              </button>
+            </div>
+
+            <!-- Tab: Structural -->
+            <div class="tab-panel active" id="tab-structural">
+              <div class="panel-score-row">
+                <div class="panel-score-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="mini-bg"   cx="40" cy="40" r="34"/>
+                    <circle class="mini-fill" id="structFill" cx="40" cy="40" r="34"
+                      stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke="#3b82f6"/>
+                  </svg>
+                  <div class="mini-score-text">
+                    <span id="structScore">--</span>
+                    <small>/ 100</small>
+                  </div>
+                </div>
+                <div class="panel-score-info">
+                  <h3>Structural Feedback</h3>
+                  <p>Analysis of section presence, document organisation, and logical flow.</p>
+                  <span class="panel-grade" id="structGrade">--</span>
+                </div>
+              </div>
+              <!-- JS populates all detail below -->
+              <div id="structContent"></div>
+            </div>
+
+            <!-- Tab: Citation -->
+            <div class="tab-panel hidden" id="tab-citation">
+              <div class="panel-score-row">
+                <div class="panel-score-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="mini-bg"   cx="40" cy="40" r="34"/>
+                    <circle class="mini-fill" id="citeFill" cx="40" cy="40" r="34"
+                      stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke="#8b5cf6"/>
+                  </svg>
+                  <div class="mini-score-text">
+                    <span id="citeScore">--</span>
+                    <small>/ 100</small>
+                  </div>
+                </div>
+                <div class="panel-score-info">
+                  <h3>Citation Review</h3>
+                  <p>Evaluation of citation density, format consistency, and reference completeness.</p>
+                  <span class="panel-grade" id="citeGrade">--</span>
+                </div>
+              </div>
+              <div id="citeContent"></div>
+            </div>
+
+            <!-- Tab: Argument -->
+            <div class="tab-panel hidden" id="tab-argument">
+              <div class="panel-score-row">
+                <div class="panel-score-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="mini-bg"   cx="40" cy="40" r="34"/>
+                    <circle class="mini-fill" id="argFill" cx="40" cy="40" r="34"
+                      stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke="#14b8a6"/>
+                  </svg>
+                  <div class="mini-score-text">
+                    <span id="argScore">--</span>
+                    <small>/ 100</small>
+                  </div>
+                </div>
+                <div class="panel-score-info">
+                  <h3>Argument Strength</h3>
+                  <p>Assessment of claim support, evidence usage, logical connectors, and counter-arguments.</p>
+                  <span class="panel-grade" id="argGrade">--</span>
+                </div>
+              </div>
+              <div id="argContent"></div>
+            </div>
+
+            <!-- Tab: Integrity -->
+            <div class="tab-panel hidden" id="tab-integrity">
+              <div class="panel-score-row">
+                <div class="panel-score-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="mini-bg"   cx="40" cy="40" r="34"/>
+                    <circle class="mini-fill" id="integFill" cx="40" cy="40" r="34"
+                      stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke="#f97316"/>
+                  </svg>
+                  <div class="mini-score-text">
+                    <span id="integScore">--</span>
+                    <small>/ 100</small>
+                  </div>
+                </div>
+                <div class="panel-score-info">
+                  <h3>Integrity Risk</h3>
+                  <p>Identification of unsupported claims, citation gaps, and content integrity concerns.</p>
+                  <span class="panel-grade" id="integGrade">--</span>
+                </div>
+              </div>
+              <div id="integContent"></div>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="results-actions">
+            <button class="btn btn-primary" id="downloadBtn">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+              Download Report (JSON)
+            </button>
+            <button class="btn btn-ghost" id="resetBtn">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+              </svg>
+              Validate Another
+            </button>
+          </div>
+
+        </div><!-- /results-content -->
+      </div><!-- /results-column -->
+
+    </div><!-- /upload-layout -->
+  </main>
+
+  <!-- ══ FOOTER (minimal) ════════════════════════════════════════ -->
+  <footer class="upload-footer">
+    <div class="container">
+      <p>
+        <a href="index.html" class="nav-logo" style="font-size:.9rem">
+          <span class="logo-icon" style="width:24px;height:24px;font-size:.75rem">E</span>
+          <span class="logo-text">ELEV</span>
+        </a>
+        &nbsp;·&nbsp; ELEV scores support decision-making and do not replace peer review.
+      </p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

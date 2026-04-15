@@ -1,0 +1,27 @@
+# backend/nixpacks.toml
+#
+# Railway / Nixpacks build configuration for the ELEV backend.
+#
+# The `canvas` package (optional — used for OCR on scanned PDFs) requires
+# several native system libraries.  Nixpacks won't install them automatically
+# from optionalDependencies, so we declare them explicitly here.
+#
+# If canvas fails to build, the server starts fine and OCR is simply disabled
+# (scanned pages are skipped).  The rest of the analysis pipeline is unaffected.
+
+[phases.setup]
+nixPkgs = [
+  "cairo",        # 2D graphics library (canvas core)
+  "pango",        # text layout (canvas text rendering)
+  "libpng",       # PNG support
+  "libjpeg",      # JPEG support
+  "giflib",       # GIF support
+  "librsvg",      # SVG support
+  "pkgconfig",    # build tool used by node-gyp to locate the above
+]
+
+[phases.build]
+cmds = ["npm install --production=false"]
+
+[start]
+cmd = "node server.js"
