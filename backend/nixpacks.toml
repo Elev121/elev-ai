@@ -17,7 +17,7 @@ nixPkgs = [
   "libjpeg",      # JPEG support
   "giflib",       # GIF support
   "librsvg",      # SVG support
-  "pkgconfig",    # build tool used by node-gyp to locate the above
+  "pkg-config",    # build tool used by node-gyp to locate the above
 ]
 
 [phases.build]
