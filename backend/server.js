@@ -12,6 +12,7 @@ const feedbackRouter = require('./routes/feedback');
 const validateRouter = require('./routes/validate');
 const metricsRouter  = require('./routes/metrics');
 const uploadRouter   = require('./routes/upload');
+const noveltyRouter  = require('./routes/novelty');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,7 +20,7 @@ const PORT = process.env.PORT || 3000;
 // ─── Security & Middleware ────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // Serve uploaded files (kept locally when Firebase Storage not configured)
@@ -93,6 +94,13 @@ const uploadLimiter = rateLimit({
   message: { success: false, message: 'Too many upload requests. Please wait a moment.' },
 });
 
+// Novelty limiter: 10 AI requests per minute per IP
+const noveltyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many AI requests. Please wait a moment.' },
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({
@@ -107,6 +115,7 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api/validate', validateLimiter, validateRouter);
 app.use('/api/metrics',  metricsRouter);
 app.use('/api/upload',   uploadLimiter,  uploadRouter);
+app.use('/api',          noveltyLimiter, noveltyRouter);
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((req, res) => {

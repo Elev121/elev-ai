@@ -58,3 +58,13 @@
   from   = "/upload/"
   to     = "/upload.html"
   status = 200
+
+[[redirects]]
+  from   = "/research"
+  to     = "/research.html"
+  status = 200
+
+[[redirects]]
+  from   = "/research/"
+  to     = "/research.html"
+  status = 200

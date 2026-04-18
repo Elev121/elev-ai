@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ELEV — Research Novelty &amp; Idea Discovery</title>
+  <meta name="description" content="Check research novelty against 200M+ academic papers or generate unique research ideas powered by Claude AI." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/research.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════ NAVBAR ══ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner container">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-icon">E</span>
+        <span class="logo-text">ELEV</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="index.html#methodology">Methodology</a></li>
+        <li><a href="index.html#metrics">Metrics</a></li>
+        <li><a href="index.html#demo">Quick Demo</a></li>
+      </ul>
+      <a href="upload.html" class="btn btn-primary nav-cta">Validate PDF</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════ PAGE ═══ -->
+  <main class="research-page">
+    <div class="container">
+
+      <!-- Page header -->
+      <div class="rp-header">
+        <div class="rp-back">
+          <a href="index.html" class="rp-back-link">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+              <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+            </svg>
+            Back to Home
+          </a>
+        </div>
+        <div class="rp-title-block">
+          <div class="rp-badge">
+            <span class="badge-dot"></span>
+            Mode 1 — Research Intelligence
+          </div>
+          <h1 class="rp-title">Research Novelty &amp; Idea Discovery</h1>
+          <p class="rp-subtitle">Check if your research problem is already saturated, or generate novel research ideas tailored to your field — powered by Claude AI and 200M+ academic papers.</p>
+        </div>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="rp-tabs" id="rpTabs">
+        <button class="rp-tab active" data-tab="novelty" id="tabNovelty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+          </svg>
+          Check Novelty
+        </button>
+        <button class="rp-tab" data-tab="generate" id="tabGenerate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          Generate Ideas
+        </button>
+      </div>
+
+      <!-- ══════════════════════════ TAB: CHECK NOVELTY ══════════════════ -->
+      <div class="rp-panel" id="panelNovelty">
+        <div class="rp-two-col">
+
+          <!-- Left: form -->
+          <div class="rp-form-col">
+            <div class="rp-card">
+              <h2 class="rp-card-title">Research Problem Details</h2>
+              <p class="rp-card-desc">Describe your research problem. More detail = more accurate novelty score.</p>
+
+              <form id="noveltyForm">
+                <div class="form-group">
+                  <label for="nTitle">Research Title <span class="rp-opt">(optional)</span></label>
+                  <input type="text" id="nTitle" placeholder="e.g. Deep Learning for Arabic Handwriting Recognition" />
+                </div>
+
+                <div class="form-group">
+                  <label for="nProblem">Problem Statement <span class="required">*</span></label>
+                  <textarea id="nProblem" rows="4" placeholder="Describe the research problem or gap you want to address in 2–5 sentences..."></textarea>
+                  <span class="field-error" id="nProblemError"></span>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="nField">Research Field</label>
+                    <input type="text" id="nField" placeholder="e.g. Computer Science, Medicine..." />
+                  </div>
+                  <div class="form-group">
+                    <label for="nCountry">Country / Region <span class="rp-opt">(context)</span></label>
+                    <input type="text" id="nCountry" placeholder="e.g. Saudi Arabia, Southeast Asia..." />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="nKeywords">Keywords <span class="rp-opt">(comma-separated)</span></label>
+                  <input type="text" id="nKeywords" placeholder="e.g. deep learning, NLP, Arabic text, OCR" />
+                </div>
+
+                <div class="form-group">
+                  <label for="nMethodology">Planned Methodology <span class="rp-opt">(optional)</span></label>
+                  <input type="text" id="nMethodology" placeholder="e.g. CNN-based model, systematic review, survey..." />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="noveltyBtn">
+                  <span class="btn-text">Check Novelty</span>
+                  <span class="btn-spinner hidden">
+                    <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Analyzing…
+                  </span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right: results -->
+          <div class="rp-result-col" id="noveltyResultCol">
+            <div class="rp-placeholder" id="noveltyPlaceholder">
+              <div class="rp-placeholder-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+              </div>
+              <p>Fill in the form and click <strong>Check Novelty</strong> to get an AI-powered novelty assessment.</p>
+            </div>
+
+            <!-- Novelty result card -->
+            <div class="rp-card hidden" id="noveltyResult">
+              <!-- Score header -->
+              <div class="novelty-score-header" id="noveltyScoreHeader">
+                <div class="novelty-badge" id="noveltyBadge">Highly Novel</div>
+                <div class="novelty-meter">
+                  <div class="novelty-meter-track">
+                    <div class="novelty-meter-fill" id="noveltyMeterFill"></div>
+                  </div>
+                  <span class="novelty-pct" id="noveltyPct">0%</span>
+                </div>
+                <p class="novelty-verdict" id="noveltyVerdict"></p>
+              </div>
+
+              <!-- Strengths / Concerns -->
+              <div class="novelty-grid">
+                <div class="novelty-section novelty-strengths">
+                  <h4>
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    Strengths
+                  </h4>
+                  <ul id="noveltyStrengths"></ul>
+                </div>
+                <div class="novelty-section novelty-concerns">
+                  <h4>
+                    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    Overlap Concerns
+                  </h4>
+                  <ul id="noveltyConcerns"></ul>
+                </div>
+              </div>
+
+              <!-- Differentiation tips -->
+              <div class="novelty-tips">
+                <h4>How to Differentiate Your Research</h4>
+                <ul id="noveltyTips"></ul>
+              </div>
+
+              <!-- Similar papers -->
+              <div class="novelty-papers hidden" id="noveltyPapersSection">
+                <h4>Most Similar Existing Papers</h4>
+                <div id="noveltyPapersList" class="papers-list"></div>
+              </div>
+            </div>
+
+            <!-- Error box -->
+            <div class="rp-error hidden" id="noveltyError">
+              <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <span id="noveltyErrorText"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════ TAB: GENERATE IDEAS ═════════════════ -->
+      <div class="rp-panel hidden" id="panelGenerate">
+        <div class="rp-two-col">
+
+          <!-- Left: form -->
+          <div class="rp-form-col">
+            <div class="rp-card">
+              <h2 class="rp-card-title">Your Research Profile</h2>
+              <p class="rp-card-desc">Tell us about your interests and constraints. AI will generate tailored, novel research ideas.</p>
+
+              <form id="generateForm">
+                <div class="form-group">
+                  <label for="gField">Research Field <span class="required">*</span></label>
+                  <input type="text" id="gField" placeholder="e.g. Machine Learning, Public Health, Civil Engineering..." />
+                  <span class="field-error" id="gFieldError"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="gInterests">Topics / Interests <span class="rp-opt">(optional)</span></label>
+                  <textarea id="gInterests" rows="3" placeholder="e.g. I'm interested in healthcare AI, especially in low-resource settings. Also interested in Arabic NLP..."></textarea>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="gCountry">Country / Region</label>
+                    <input type="text" id="gCountry" placeholder="e.g. Malaysia, Egypt, Brazil..." />
+                  </div>
+                  <div class="form-group">
+                    <label for="gDifficulty">Difficulty Level</label>
+                    <select id="gDifficulty">
+                      <option value="">Any</option>
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate" selected>Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="gMethodology">Preferred Methodology <span class="rp-opt">(optional)</span></label>
+                  <input type="text" id="gMethodology" placeholder="e.g. experimental, systematic review, machine learning, survey..." />
+                </div>
+
+                <div class="form-group">
+                  <label for="gCount">Number of Ideas</label>
+                  <select id="gCount">
+                    <option value="3">3 ideas</option>
+                    <option value="4">4 ideas</option>
+                    <option value="5" selected>5 ideas</option>
+                    <option value="6">6 ideas</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="generateBtn">
+                  <span class="btn-text">Generate Research Ideas</span>
+                  <span class="btn-spinner hidden">
+                    <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Generating…
+                  </span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right: results -->
+          <div class="rp-result-col" id="generateResultCol">
+            <div class="rp-placeholder" id="generatePlaceholder">
+              <div class="rp-placeholder-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                  <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+              </div>
+              <p>Fill in your research profile and click <strong>Generate Research Ideas</strong> to get AI-powered novel research ideas.</p>
+            </div>
+
+            <!-- Ideas list -->
+            <div class="hidden" id="generateResult">
+              <div class="ideas-header">
+                <h3 id="ideasCount">5 Novel Research Ideas</h3>
+                <p class="ideas-subheading">Click any card to expand details</p>
+              </div>
+              <div id="ideasList" class="ideas-list"></div>
+            </div>
+
+            <!-- Error box -->
+            <div class="rp-error hidden" id="generateError">
+              <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <span id="generateErrorText"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ════════════════════════════════════════════════════════ FOOTER ══ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom" style="border-top: none; padding-top: 0;">
+        <p>&copy; 2025 ELEV Research Platform. <a href="index.html">Back to Homepage</a></p>
+        <p class="footer-disclaimer">AI-generated content is for research guidance only. Always verify findings independently.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/research.js"></script>
+</body>
+</html>
