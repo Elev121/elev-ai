@@ -90,36 +90,38 @@ router.post('/', upload.single('pdf'), async (req, res) => {
 
     if (process.env.ANTHROPIC_API_KEY) {
       try {
-        // Pass analysisId so Claude can retrieve semantically relevant chunks
         results = await analyzeWithClaude(parsed, analysisId);
         results.analysedBy = 'claude';
         console.log(`[upload] Claude analysis complete. ELEV score: ${results.elevScore}`);
       } catch (claudeErr) {
-        console.error(`[upload] Claude API error: ${claudeErr.message}`);
+        const isTimeout    = claudeErr.code === 'CLAUDE_TIMEOUT' ||
+                             claudeErr.message.toLowerCase().includes('timeout');
+        const isConfigErr  = claudeErr.message.includes('API_KEY') ||
+                             claudeErr.message.includes('401') ||
+                             claudeErr.message.includes('403');
 
-        // Distinguish "API key wrong / quota exceeded" from transient network errors
-        const isConfigError = claudeErr.message.includes('API_KEY') ||
-                              claudeErr.message.includes('401') ||
-                              claudeErr.message.includes('403');
-        if (isConfigError) {
+        if (isConfigErr) {
           deleteLocalFile(localPath);
           return res.status(503).json({
             success: false,
             message:
-              'Claude API authentication failed. ' +
-              'Check that ANTHROPIC_API_KEY in your .env file is correct.',
+              'AI authentication failed. Check that ANTHROPIC_API_KEY is correct.',
             detail: claudeErr.message,
           });
         }
 
-        // Transient error — fall back to heuristic
-        console.warn('[upload] Falling back to heuristic analysis…');
+        if (isTimeout) {
+          console.warn(`[upload] Claude timed out — switching to heuristic analysis (user still gets a result).`);
+        } else {
+          console.error(`[upload] Claude error (${claudeErr.message}) — switching to heuristic analysis.`);
+        }
+
         results = normaliseHeuristic(runFullAnalysis(parsed), parsed);
-        results.analysedBy = 'heuristic';
+        results.analysedBy    = 'heuristic';
+        results.fallbackReason = isTimeout ? 'timeout' : 'error';
       }
     } else {
       console.warn('[upload] ANTHROPIC_API_KEY not set — using heuristic analysis.');
-      console.warn('[upload] Add your key to backend/.env to enable Claude AI feedback.');
       results = normaliseHeuristic(runFullAnalysis(parsed), parsed);
       results.analysedBy = 'heuristic';
     }

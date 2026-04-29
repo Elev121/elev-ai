@@ -33,12 +33,14 @@ function getClient() {
 }
 
 const MODEL      = process.env.CLAUDE_MODEL || 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 4096;
+const MAX_TOKENS = 2500;
 
-// Maximum characters to send per section (keeps token cost reasonable)
-const SECTION_MAX_CHARS = 3500;
-// Maximum characters of full text if section extraction is sparse
-const FULL_TEXT_MAX_CHARS = 12000;
+// Max chars extracted from any single section
+const SECTION_CHAR_CAP  = 400;
+// Total char budget for ALL document text (sections + chunks combined)
+const DOC_TEXT_BUDGET   = 3200;
+// Claude API timeout — bail out before Netlify's 26 s proxy limit
+const CLAUDE_TIMEOUT_MS = parseInt(process.env.CLAUDE_TIMEOUT_MS, 10) || 25000;
 
 // ── Main entry point ──────────────────────────────────────────────────────────
 
@@ -76,12 +78,22 @@ async function analyzeWithClaude(parsedDoc, analysisId) {
   const t0 = Date.now();
 
   const client = getClient();
-  const message = await client.messages.create({
-    model:      MODEL,
-    max_tokens: MAX_TOKENS,
-    system:     SYSTEM_PROMPT,
-    messages:   [{ role: 'user', content: prompt }],
-  });
+
+  // Race the API call against a hard timeout so we can fall back before
+  // Netlify's 26-second proxy deadline fires a 504.
+  const timeoutErr = Object.assign(
+    new Error(`Claude API timed out after ${CLAUDE_TIMEOUT_MS / 1000}s`),
+    { code: 'CLAUDE_TIMEOUT' }
+  );
+  const message = await Promise.race([
+    client.messages.create({
+      model:      MODEL,
+      max_tokens: MAX_TOKENS,
+      system:     SYSTEM_PROMPT,
+      messages:   [{ role: 'user', content: prompt }],
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(timeoutErr), CLAUDE_TIMEOUT_MS)),
+  ]);
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
   const inputTokens  = message.usage?.input_tokens  ?? '?';
@@ -108,215 +120,75 @@ const SYSTEM_PROMPT = [
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
-/**
- * @param {object}   parsedDoc        Full output of pdfParser.parsePDF()
- * @param {Array}    retrievedChunks  Chunks from retrieveForAnalysis() — may be []
- */
+// Sections in priority order — references skipped (high char count, low signal)
+const PRIORITY_SECTIONS = [
+  ['abstract',         'ABSTRACT'],
+  ['introduction',     'INTRODUCTION'],
+  ['conclusion',       'CONCLUSION'],
+  ['methodology',      'METHODOLOGY'],
+  ['results',          'RESULTS'],
+  ['discussion',       'DISCUSSION'],
+  ['literatureReview', 'LIT REVIEW'],
+];
+
+const ALL_SECTION_KEYS = [
+  'abstract','introduction','literatureReview','methodology',
+  'results','discussion','conclusion','references',
+];
+
 function buildPrompt(parsedDoc, retrievedChunks = []) {
-  const { cleanedText, sections, wordCount, charCount, pageCount, metadata, documentProfile } = parsedDoc;
+  const { cleanedText, sections, wordCount, pageCount, metadata, documentProfile } = parsedDoc;
   const dp = documentProfile || {};
 
-  // Build section text block
+  // Compact presence line: "✓ abstract  ✗ methodology  ✓ conclusion …"
+  const presenceLine = ALL_SECTION_KEYS
+    .map((k) => `${(sections.present || {})[k] ? '✓' : '✗'} ${k}`)
+    .join('  ');
+
+  // Citation count estimate (cheap regex on already-parsed text)
+  const citCount = (cleanedText.match(/\([A-Z][a-zA-Z]+[^)]*\d{4}\)|\[\d+\]/g) || []).length;
+
+  // ── Build section excerpts within a hard character budget ────────────────
+  let budget = DOC_TEXT_BUDGET;
   let sectionBlock = '';
-  let totalSectionChars = 0;
 
-  const SECTION_LABELS = {
-    abstract:         'ABSTRACT',
-    introduction:     'INTRODUCTION',
-    literatureReview: 'LITERATURE REVIEW',
-    methodology:      'METHODOLOGY',
-    results:          'RESULTS / FINDINGS',
-    discussion:       'DISCUSSION',
-    conclusion:       'CONCLUSION',
-    references:       'REFERENCES',
-  };
-
-  for (const [key, label] of Object.entries(SECTION_LABELS)) {
-    const raw = (sections.found || {})[key] || '';
-    if (raw.trim().length > 0) {
-      const excerpt = raw.length > SECTION_MAX_CHARS
-        ? raw.slice(0, SECTION_MAX_CHARS) + '\n[... section continues ...]'
-        : raw;
-      sectionBlock += `\n\n────── ${label} (${countWords(raw)} words) ──────\n${excerpt}`;
-      totalSectionChars += excerpt.length;
-    } else {
-      sectionBlock += `\n\n────── ${label} ──────\n[NOT DETECTED IN DOCUMENT]`;
-    }
+  for (const [key, label] of PRIORITY_SECTIONS) {
+    if (budget <= 50) break;
+    const raw = ((sections.found || {})[key] || '').trim();
+    if (!raw) continue;
+    const take    = Math.min(SECTION_CHAR_CAP, budget);
+    const excerpt = raw.slice(0, take);
+    sectionBlock += `[${label}]\n${excerpt}${raw.length > take ? '…' : ''}\n\n`;
+    budget -= excerpt.length;
   }
 
-  // If sections are sparse, supplement with full document text
-  let fullTextBlock = '';
-  if (totalSectionChars < 2000 && cleanedText.length > 0) {
-    const sample = cleanedText.slice(0, FULL_TEXT_MAX_CHARS);
-    fullTextBlock = `\n\n═══ FULL DOCUMENT TEXT (first ${Math.min(cleanedText.length, FULL_TEXT_MAX_CHARS).toLocaleString()} of ${cleanedText.length.toLocaleString()} chars) ═══\n${sample}`;
-    if (cleanedText.length > FULL_TEXT_MAX_CHARS) fullTextBlock += '\n[... document continues ...]';
+  // Sparse-document fallback: small slice of raw text, still within budget
+  if (!sectionBlock && cleanedText.length > 0) {
+    const take    = Math.min(budget, 1500);
+    const excerpt = cleanedText.slice(0, take);
+    sectionBlock  = `[DOCUMENT TEXT]\n${excerpt}${cleanedText.length > take ? '…' : ''}\n\n`;
+    budget       -= excerpt.length;
   }
 
-  // Build section presence table
-  const presenceTable = Object.entries(sections.present || {})
-    .map(([k, v]) => `  ${v ? '✓' : '✗'} ${SECTION_LABELS[k] || k}`)
-    .join('\n');
-
-  // Citation count estimate
-  const citationMatches = cleanedText.match(/\([A-Z][a-zA-Z]+[^)]*\d{4}\)|\[\d+\]/g) || [];
-
-  // OCR note
-  const ocrNote = (dp.ocrPages || []).length > 0
-    ? `OCR was applied to pages: ${dp.ocrPages.join(', ')}`
-    : 'No OCR was required (document is text-based)';
-
-  // ── Build semantic retrieval block ──────────────────────────────────────
+  // One Qdrant chunk maximum (most relevant), hard-capped at 400 chars
   let retrievedBlock = '';
-  if (retrievedChunks.length > 0) {
-    retrievedBlock = '\n\n═══ SEMANTIC CITATION DISCOVERY — RETRIEVED PASSAGES ═══\n';
-    retrievedBlock += 'The following passages were retrieved via vector search as the most relevant to\n';
-    retrievedBlock += 'citation analysis, methodology, evidence, arguments, and limitations.\n';
-    retrievedBlock += 'Use these alongside the section text above to write grounded, specific feedback.\n';
-    retrievedBlock += 'Do NOT invent details not present in any of the text blocks provided.\n';
-
-    retrievedChunks.forEach((chunk, idx) => {
-      const sectionLabel = chunk.section.replace(/([A-Z])/g, ' $1').trim();
-      const scorePct     = Math.round((chunk.score || 0) * 100);
-      retrievedBlock += `\n── Retrieved passage ${idx + 1}/${retrievedChunks.length}`;
-      retrievedBlock += ` [section: ${sectionLabel} | relevance: ${scorePct}%] ──\n`;
-      retrievedBlock += chunk.text;
-      retrievedBlock += '\n';
-    });
+  if (retrievedChunks.length > 0 && budget > 100) {
+    const chunkText = (retrievedChunks[0].text || '').slice(0, Math.min(400, budget));
+    retrievedBlock  = `[RETRIEVED PASSAGE]\n${chunkText}\n\n`;
   }
 
-  return `You are evaluating a real academic document. All feedback must reference the actual text provided below.
+  const docBlock = sectionBlock + retrievedBlock;
 
-═══ DOCUMENT VERIFICATION PROFILE ═══
-  Filename        : ${dp.filename || 'uploaded.pdf'}
-  Pages           : ${pageCount} (verified by pdfjs-dist parser)
-  Words extracted : ${wordCount.toLocaleString()}
-  Characters      : ${charCount.toLocaleString()}
-  Text quality    : ${dp.textQuality || 'good'}
-  Analysis confid : ${dp.analysisConfidence || 0}%
-  ${ocrNote}
-  Citation format : ${metadata?.citationFormat || 'unknown'}
-  Est. in-text citations: ~${citationMatches.length}
+  const prompt = `Evaluate this academic document. All feedback must reference the text below.
 
-Sections detected:
-${presenceTable}
+FILE: ${dp.filename || 'uploaded.pdf'} | ${pageCount}p | ${wordCount} words | ~${citCount} citations | format: ${metadata?.citationFormat || 'unknown'}
+SECTIONS: ${presenceLine}
 
-═══ EXTRACTED SECTION TEXT ═══
-(Use these to write SPECIFIC, GROUNDED feedback. Quote actual phrases.)
-${sectionBlock}
-${fullTextBlock}${retrievedBlock}
+${docBlock}Return ONLY valid JSON — no markdown fences, no text outside the object:
+{"overall":{"score":<0-100>,"grade":<"A+"|"A"|"A-"|"B+"|"B"|"B-"|"C+"|"C"|"C-"|"D"|"F">,"summary":"<2 sentences>","topStrengths":["<strength>","<strength>"],"topImprovements":["<improvement>","<improvement>"]},"structural":{"score":<0-100>,"grade":<grade>,"summary":"<2 sentences>","sections":{"abstract":{"present":<bool>,"quality":<"strong"|"adequate"|"weak"|"missing">,"feedback":"<1 sentence>"},"introduction":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"literatureReview":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"methodology":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"results":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"discussion":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"conclusion":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"},"references":{"present":<bool>,"quality":<quality>,"feedback":"<1 sentence>"}},"flowAnalysis":"<2 sentences>","recommendations":["<rec>","<rec>"]},"citations":{"score":<0-100>,"grade":<grade>,"summary":"<2 sentences>","formatDetected":"<APA|IEEE|MLA|Chicago|mixed|none>","inTextCount":<int>,"densityAssessment":"<1 sentence>","qualityAssessment":"<1 sentence>","recencyAssessment":"<1 sentence>","issues":["<issue>","<issue>"],"recommendations":["<rec>","<rec>"]},"arguments":{"score":<0-100>,"grade":<grade>,"summary":"<2 sentences>","claimAnalysis":"<1 sentence>","evidenceAnalysis":"<1 sentence>","logicAnalysis":"<1 sentence>","counterArgumentAnalysis":"<1 sentence>","weaknesses":[{"title":"<label>","description":"<1 sentence>","suggestion":"<1 sentence>"}],"recommendations":["<rec>","<rec>"]},"integrity":{"score":<0-100>,"grade":<grade>,"riskLevel":<"low"|"moderate"|"high">,"summary":"<2 sentences>","risks":[{"type":"<type>","severity":<"low"|"medium"|"high">,"title":"<label>","description":"<1 sentence>","resolution":"<1 sentence>"}],"preventionAdvice":"<1 sentence>","recommendations":["<rec>","<rec>"]}}`;
 
-═══ EVALUATION INSTRUCTIONS ═══
-Return ONLY the following JSON object. Every string field must contain complete, specific, grounded sentences referencing what you actually read above. DO NOT write generic academic advice unrelated to this specific document.
-
-{
-  "overall": {
-    "score": <integer 0–100>,
-    "grade": <"A+"|"A"|"A-"|"B+"|"B"|"B-"|"C+"|"C"|"C-"|"D"|"F">,
-    "summary": "<3–5 sentence paragraph that mentions specific features of THIS document — its topic, what you found strong, what needs work>",
-    "topStrengths": [
-      "<specific strength referencing actual content — 1–2 sentences>",
-      "<another specific strength>"
-    ],
-    "topImprovements": [
-      "<specific improvement needed, referencing an actual gap or weakness — 1–2 sentences>",
-      "<another improvement>"
-    ]
-  },
-  "structural": {
-    "score": <integer 0–100>,
-    "grade": <grade>,
-    "summary": "<3–4 sentence paragraph on structural quality, naming sections that are present, absent, or underdeveloped>",
-    "sections": {
-      "abstract":         { "present": <bool>, "quality": <"strong"|"adequate"|"weak"|"missing">, "feedback": "<2–3 sentences grounded in what the abstract actually says, or explaining what is missing>" },
-      "introduction":     { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "literatureReview": { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "methodology":      { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "results":          { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "discussion":       { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "conclusion":       { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" },
-      "references":       { "present": <bool>, "quality": <quality>, "feedback": "<2–3 sentences>" }
-    },
-    "flowAnalysis": "<4–6 sentence paragraph on logical flow, transitions, coherence — reference the actual text structure you observed>",
-    "recommendations": [
-      "<specific, actionable recommendation referencing this document>",
-      "<another>",
-      "<another>"
-    ]
-  },
-  "citations": {
-    "score": <integer 0–100>,
-    "grade": <grade>,
-    "summary": "<3–4 sentence paragraph on citation quality referencing what you observed in the text>",
-    "formatDetected": "<APA|IEEE|MLA|Chicago|mixed|none detected>",
-    "inTextCount": <estimated integer>,
-    "densityAssessment": "<3–5 sentences on frequency and distribution of citations — are claims backed? Is evidence sparse?>",
-    "qualityAssessment": "<3–5 sentences on whether the citations appear credible, relevant, and appropriate for the topic of this paper>",
-    "recencyAssessment": "<2–4 sentences on currency of sources based on dates you can infer from the citation patterns>",
-    "issues": [
-      "<specific issue observed>",
-      "<another>"
-    ],
-    "recommendations": [
-      "<specific recommendation>",
-      "<another>",
-      "<another>"
-    ]
-  },
-  "arguments": {
-    "score": <integer 0–100>,
-    "grade": <grade>,
-    "summary": "<3–4 sentence paragraph on argument quality>",
-    "claimAnalysis": "<4–6 sentences analyzing whether claims in THIS document are clear, well-stated, and arguable — reference specific passages>",
-    "evidenceAnalysis": "<4–6 sentences on evidence usage — where evidence is strong, where it is absent, what patterns you observed>",
-    "logicAnalysis": "<3–5 sentences on logical coherence, use of reasoning language, whether arguments flow>",
-    "counterArgumentAnalysis": "<3–5 sentences on whether limitations and opposing views are addressed — be specific about what was and wasn't addressed>",
-    "weaknesses": [
-      {
-        "title": "<short label for the weakness>",
-        "description": "<2–3 sentences explaining this specific weakness, referencing the text>",
-        "suggestion": "<1–2 sentences with a concrete fix>"
-      }
-    ],
-    "recommendations": [
-      "<specific recommendation>",
-      "<another>",
-      "<another>"
-    ]
-  },
-  "integrity": {
-    "score": <integer 0–100>,
-    "grade": <grade>,
-    "riskLevel": <"low"|"moderate"|"high">,
-    "summary": "<3–4 sentence paragraph on academic integrity risk, based on what you actually read>",
-    "risks": [
-      {
-        "type": "<vague_authority|unsupported_claim|citation_gap|weak_evidence|methodological_gap|other>",
-        "severity": <"low"|"medium"|"high">,
-        "title": "<short descriptive label>",
-        "description": "<2–3 sentences explaining the specific risk, referencing patterns in this document>",
-        "resolution": "<2–3 sentences with concrete steps to resolve it>"
-      }
-    ],
-    "preventionAdvice": "<3–4 sentences of specific pre-submission advice based on the actual risks you identified in this document>",
-    "recommendations": [
-      "<specific recommendation>",
-      "<another>"
-    ]
-  }
-}
-
-Scoring reference:
-  90–100  Exceptional — ready for submission or publication
-  75–89   Good — minor refinements needed
-  60–74   Adequate — clear improvements required
-  45–59   Below standard — significant revision needed
-  0–44    Poor — fundamental issues must be addressed
-
-Important:
-- If risks array would be empty (truly no concerns), include one low-severity item noting a minor improvement area.
-- If weaknesses array would be empty, include one item noting a minor area for growth.
-- scores must reflect actual document quality, not aspirational assessment.
-- inTextCount: count only what you can reasonably observe in the text above.`;
+  console.log(`[claudeAnalyzer] Prompt size: ${prompt.length} chars | doc text used: ${DOC_TEXT_BUDGET - budget} chars`);
+  return prompt;
 }
 
 // ── JSON parser ───────────────────────────────────────────────────────────────
