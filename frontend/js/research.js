@@ -184,6 +184,8 @@ function renderNoveltyResult(data) {
   const simPapers  = data.similarPapers || [];
   const papersDiv  = $('noveltyPapersSection');
   const papersList = $('noveltyPapersList');
+  const broadenedNotice = $('noveltyBroadenedNotice');
+  if (broadenedNotice) broadenedNotice.classList.toggle('hidden', !data.broadenedSearch);
 
   if (papers.length) {
     papersList.innerHTML = papers.map((p, i) => {

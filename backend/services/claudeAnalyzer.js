@@ -321,24 +321,60 @@ Important:
 
 // ── JSON parser (robust) ──────────────────────────────────────────────────────
 
+/**
+ * Walk the string character-by-character to find the outermost balanced
+ * { ... } block, correctly skipping over strings (including escaped quotes)
+ * and nested objects.  Much safer than a greedy regex when Claude appends
+ * explanatory text after the closing brace.
+ */
+function extractJSONObject(str) {
+  const start = str.indexOf('{');
+  if (start === -1) return null;
+
+  let depth    = 0;
+  let inString = false;
+  let escape   = false;
+
+  for (let i = start; i < str.length; i++) {
+    const ch = str[i];
+    if (escape)                  { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true;  continue; }
+    if (ch === '"')              { inString = !inString; continue; }
+    if (inString)                { continue; }
+    if      (ch === '{')         { depth++; }
+    else if (ch === '}')         { if (--depth === 0) return str.slice(start, i + 1); }
+  }
+  return null; // unterminated — likely truncated by max_tokens
+}
+
 function parseJSON(text) {
-  // Strip any accidental markdown code fences
-  const cleaned = text
-    .replace(/^```(?:json)?\s*/im, '')
-    .replace(/\s*```\s*$/m, '')
+  const raw = (text || '').trim();
+
+  // Pass 1 — strip ALL markdown code fences (opening and standalone closing lines).
+  // Use the `g` flag so every fence line is removed, not just the first.
+  const stripped = raw
+    .replace(/^```(?:json)?\s*$/gim, '') // ``` or ```json lines
     .trim();
 
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // Try to extract the outermost { ... } block
-    const m = cleaned.match(/\{[\s\S]*\}/);
-    if (m) {
-      try { return JSON.parse(m[0]); } catch {/* fall through */}
-    }
-    console.error('[claudeAnalyzer] Failed to parse JSON. Raw response (first 500 chars):', text.slice(0, 500));
-    throw new Error('Claude returned non-parseable JSON. Check your API key and model availability.');
+  // Attempt 1 — direct parse on stripped text
+  try { return JSON.parse(stripped); } catch { /* continue */ }
+
+  // Attempt 2 — extract the outermost balanced { ... } from the RAW response
+  // (works even when Claude prefixes or suffixes prose around the JSON block)
+  const extracted = extractJSONObject(raw);
+  if (extracted) {
+    try { return JSON.parse(extracted); } catch { /* continue */ }
   }
+
+  // Attempt 3 — same extraction but on the stripped text
+  const extractedStripped = extractJSONObject(stripped);
+  if (extractedStripped) {
+    try { return JSON.parse(extractedStripped); } catch { /* continue */ }
+  }
+
+  const preview = raw.slice(0, 200).replace(/\n/g, '\\n');
+  console.error(`[claudeAnalyzer] All JSON parse attempts failed. Raw starts with: ${preview}`);
+  throw new Error(`AI analysis returned an unexpected format. Raw response starts with: ${raw.slice(0, 80)}`);
 }
 
 // ── Normalise Claude output ───────────────────────────────────────────────────

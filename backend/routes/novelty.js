@@ -63,8 +63,8 @@ router.get('/scholar-search', [
 ], validate, async (req, res) => {
   try {
     const limit  = req.query.limit || 10;
-    const papers = await searchAcademic(req.query.q, limit);
-    res.json({ success: true, papers, count: papers.length });
+    const { papers, broadened } = await searchAcademic(req.query.q, limit);
+    res.json({ success: true, papers, count: papers.length, broadened });
   } catch (err) {
     console.error('[novelty] scholar-search error:', err.message);
     res.status(500).json({ success: false, message: err.message });

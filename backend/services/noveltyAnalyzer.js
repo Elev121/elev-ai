@@ -22,7 +22,7 @@ async function checkNovelty({ title, problem, keywords, field, country, methodol
   if (!client) throw new Error('ANTHROPIC_API_KEY is not configured.');
 
   const searchQuery = [title || problem, keywords, field].filter(Boolean).join(' ');
-  const papers = await searchAcademic(searchQuery, 10);
+  const { papers, broadened } = await searchAcademic(searchQuery, 10);
 
   const papersBlock = papers.length
     ? papers.slice(0, 8).map((p, i) =>
@@ -69,6 +69,7 @@ saturationLevel must be one of: "Low" | "Medium" | "High"`;
   const text = msg.content[0].text;
   const result = parseClaudeJSON(text);
   result.papers = papers.slice(0, 6);
+  result.broadenedSearch = broadened;
   return result;
 }
 
@@ -79,7 +80,7 @@ async function generateProblems({ field, interests, country, difficulty, methodo
   if (!client) throw new Error('ANTHROPIC_API_KEY is not configured.');
 
   const searchQuery = `${field} research gaps novel problems ${interests || ''}`.trim();
-  const papers = await searchAcademic(searchQuery, 6);
+  const { papers } = await searchAcademic(searchQuery, 6);
 
   const paperCtx = papers.length
     ? '\nRecent papers in this area (for context):\n' + papers.slice(0, 5).map((p) => `- "${p.title}" (${p.year || 'n/a'})`).join('\n')
