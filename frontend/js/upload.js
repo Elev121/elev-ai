@@ -1,9 +1,9 @@
 /**
  * ELEV — upload.js  v4
  * Real PDF upload pipeline — no mock data, no hardcoded feedback.
- * Every result is generated from the actual uploaded document via Claude AI.
+ * Every result is generated from the actual uploaded document via the AI analysis engine.
  *
- * Renders the normalised shape from claudeAnalyzer.js:
+ * Renders the normalised shape from the analysis pipeline:
  * { elevScore, grade, documentProfile, overall,
  *   structural, citation, argument, integrity }
  */
@@ -214,7 +214,7 @@ function uploadWithProgress(fd) {
     // showing a misleading raw message.
     xhr.addEventListener('error', () => reject(new Error('xhr_error')));
 
-    xhr.timeout = 240000; // 4 min — Claude + OCR can take time
+    xhr.timeout = 240000; // 4 min — AI analysis + OCR can take time
     xhr.addEventListener('timeout', () =>
       reject(new Error(`Request timed out after 4 minutes. URL: ${API_UPLOAD}. The PDF may be too large or the server is under load.`))
     );
@@ -229,7 +229,7 @@ let stepIdx = 0, stepTimer = null;
 
 function startProcessingAnim() {
   stepIdx = 0;
-  setProgress(40, 'Sending to Claude AI…');
+  setProgress(40, 'Running AI analysis…');
   STEPS.forEach((id) => { const e = document.getElementById(id); e.classList.remove('active','done'); });
   nextStep();
 }
@@ -274,7 +274,7 @@ function renderAll(data) {
     `<span class="doc-meta-item"><strong>${doc?.pageCount || '—'}</strong> pages</span>`,
     `<span class="doc-meta-item">Format: <strong>${doc?.citationFormat || 'Unknown'}</strong></span>`,
     analysedBy === 'claude'
-      ? '<span class="doc-meta-item analysed-by-claude">Claude AI</span>'
+      ? '<span class="doc-meta-item analysed-by-ai">AI Analysis</span>'
       : '<span class="doc-meta-item">Heuristic</span>',
   ].join('');
 
@@ -378,7 +378,7 @@ function renderDocumentProfile(dp, doc, analysedBy) {
 
   const qualityColor = { good: '#22c55e', partial: '#f59e0b', poor: '#ef4444' }[dp.textQuality] || '#22c55e';
   const engineLabel  = analysedBy === 'claude'
-    ? `<span class="dpp-engine-badge">Claude AI (${dp.claudeModel || 'AI'})</span>`
+    ? `<span class="dpp-engine-badge">AI Engine</span>`
     : '<span class="dpp-engine-badge dpp-engine-heuristic">Heuristic Engine</span>';
 
   const conf    = dp.analysisConfidence || 0;

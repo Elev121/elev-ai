@@ -556,13 +556,13 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   DETAILED FEEDBACK COMPONENTS  (v3 — Claude-powered)
-   These styles render the normalised analysis output from the Claude
-   API pipeline.
+   DETAILED FEEDBACK COMPONENTS  (v3)
+   These styles render the normalised analysis output from the AI
+   analysis pipeline.
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ── "Analysed by Claude" badge ──────────────────────────────────── */
-.analysed-by-claude {
+/* ── "Analysed by AI" badge ──────────────────────────────────────── */
+.analysed-by-ai {
   background: linear-gradient(90deg, rgba(139,92,246,.15), rgba(59,130,246,.12));
   border: 1px solid rgba(139,92,246,.3);
   color: var(--accent-purple) !important;
@@ -1087,7 +1087,7 @@
   min-width: 120px;
 }
 
-/* Engine badge — Claude / Heuristic */
+/* Engine badge — AI / Heuristic */
 .dpp-engine-badge {
   display: inline-flex;
   align-items: center;
